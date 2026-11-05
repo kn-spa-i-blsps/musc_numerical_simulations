@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "musc"
+version = "0.1.0"
+description = "Decentralized MFG routing + CBF safety filter for a TDMA-networked drone swarm, with delay compensation"
+requires-python = ">=3.10"
+dependencies = ["jax", "jaxlib", "jaxopt", "numpy", "pyyaml", "pytest"]
+
+[tool.setuptools.packages.find]
+include = ["mfg*", "control*", "compensation*", "env*", "sim*", "analysis*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

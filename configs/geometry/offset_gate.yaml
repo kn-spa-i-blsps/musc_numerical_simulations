@@ -1,0 +1,9 @@
+# LayoutA "offset_gate" on the single_gate arena (see env/scenarios.py LayoutA).
+scenario:
+  geometry_N: 230
+  gate_width: 2.309401076758503
+  goal_gap_mult: 3.0
+  goal_spacing: 1.05
+  goal_clearance: 1.18
+  goal_geometry_spacing: 1.05
+  layout: offset_gate

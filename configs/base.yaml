@@ -1,0 +1,39 @@
+# Shared model + solver settings. Geometry files and experiments override parts of this.
+grid_step: 0.2            # MFG grid [m]
+dt_exec: 0.01             # control / simulation step [s]
+horizon: path             # horizon from the path length to the goal
+matmul_precision: highest # always: default precision once produced a spurious 2x effect
+scenario:
+  w_goal: 2.0             # goal-progress weight (conical)
+  w_hold: 8.0             # penalty for being outside the goal disc
+  goal_softness: 0.25
+  obs_penalty: 200.0      # soft macro wall
+  wall_thickness: 0.3
+  edge_softness: 0.25
+macro_cost:
+  c_w: 1.0                # congestion W(m) = c_w m^2
+  w_bar: 10.0             # soft collision barrier
+  m_bar: 6.25             # 1 / R_BARRIER^2 [agents/m^2]
+  f_cap: 300.0            # solver safeguard
+fp:                       # fictitious play
+  damping: 0.02
+  max_iters: 800
+  burn_in: 200
+  tol: 0.005
+control:
+  c_dens: 1.0             # weight of the local density-tracking term
+cbf:
+  d_safe: 0.7             # = D_COLLISION 0.30 + 0.40 margin (operating margin)
+  r_wall: 0.2             # wall half-thickness 0.05 + drone radius 0.15
+  r_body: 0.15
+  gamma: 20.0
+  rho: 1.0
+  slack_lin: 100.0
+  k_nb: 8                 # neighbours per QP
+  r_sense: 5.0
+  prio_gain: 2.0
+  prio_min: 0.25
+  u_box: 5.656854249492381  # V_MAX / sqrt(2)
+  tol: 1.0e-05
+  maxiter: 2000
+  qp_solver: exact_hard

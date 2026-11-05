@@ -1,0 +1,7 @@
+# Example experiment: real vs learned vs delay-removed across swarm size (T_frame = N * 5 ms).
+name: example
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  - {N: [25, 50, 100, 150, 200], arm: [real], cbf.d_safe: [0.55, 0.70]}
+  - {N: [25, 50, 100, 150, 200], arm: [learned, noise_only, cv, smith]}

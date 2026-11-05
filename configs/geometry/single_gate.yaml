@@ -1,0 +1,9 @@
+# One wall with a single centred gate; the arena (43.4 x 19.1 m) is sized for 230 agents and shared by every N,
+# so N changes only the number of agents and the TDMA frame (T_frame = N * t_slot).
+scenario:
+  geometry_N: 230
+  gate_width: 2.309401076758503
+  goal_gap_mult: 3.0
+  goal_spacing: 1.05
+  goal_clearance: 1.18
+  goal_geometry_spacing: 1.05

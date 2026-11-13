@@ -1,0 +1,6 @@
+# Phase-0 gate: determinism. real arm, same seed, run twice (det_a / det_b) with separate MFG caches.
+name: phase0_det_b
+geometry: single_gate
+seeds: [0]
+blocks:
+  - {N: [50], arm: [real]}

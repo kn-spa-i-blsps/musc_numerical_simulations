@@ -24,6 +24,17 @@ def push_forward_core(m: jnp.ndarray, ux: jnp.ndarray, uz: jnp.ndarray, h: float
     return jnp.maximum(m_new, 0.0)
 
 
+def diffuse_core(m: jnp.ndarray, h: float, dt: float, nu: float) -> jnp.ndarray:
+    """One explicit step of dm/dt = nu * Lap m with no flux through the outer arena walls.
+    Written with face fluxes (difference to the next cell, 0 on the outer face), so the total mass is
+    conserved exactly; for r = nu*dt/h^2 <= 1/4 each new value is a non-negative weighted average of
+    old values, so m stays >= 0 without a clamp."""
+    gx = (jnp.roll(m, -1, axis=0) - m).at[-1, :].set(0.0)      # m[i+1] - m[i] on the right face of cell i
+    gz = (jnp.roll(m, -1, axis=1) - m).at[:, -1].set(0.0)
+    lap = (gx - jnp.roll(gx, 1, axis=0).at[0, :].set(0.0)) + (gz - jnp.roll(gz, 1, axis=1).at[:, 0].set(0.0))
+    return m + (nu * dt / h ** 2) * lap
+
+
 def push_forward(m: jnp.ndarray, policy: jnp.ndarray, grid: Grid, dt: float) -> jnp.ndarray:
     """dm/dt + div(m*u) = 0, jeden krok Eulera w przód, donor-cell upwind na ścianach komórek.
 

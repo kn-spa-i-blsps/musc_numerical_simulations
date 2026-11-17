@@ -25,6 +25,7 @@ class CostParams(NamedTuple):
     V_obs: jnp.ndarray  # (nx, nz) — lokalne, nieopóźnione
     W_fn: Callable[[jnp.ndarray], jnp.ndarray]  # crowd-aversion, monotoniczna w m
     V_terminal: jnp.ndarray | None = None  # terminal cost g(x), V(T,.) = g. None = V(T,.) = 0 (old graph)
+    nu: float = 0.0  # viscosity [m^2/s] (second-order MFG: -nu*Lap V in HJB, +nu*Lap m in transport). 0 = old graph
 
 
 def _one_sided_diffs(v: jnp.ndarray, h: float) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
@@ -79,6 +80,29 @@ def _scan_hjb_backward_from(running_rev: jnp.ndarray, v_terminal: jnp.ndarray, h
     return v_stack_rev
 
 
+@jax.jit
+def _scan_hjb_backward_visc(running_rev: jnp.ndarray, v_terminal: jnp.ndarray, h: float, dt: float,
+                            nu: float) -> jnp.ndarray:
+    """Viscous HJB  -dV/dt - nu*Lap V + 1/2|grad V|^2 = f: the same local Lax-Friedrichs step as above plus
+    an explicit nu*Lap V term. Lap V reuses the one-sided differences, which are 0 on the arena edge, so the
+    Laplacian has Neumann (zero-slope) edges like the rest of the scheme. Stable for nu*dt/h^2 <= 1/4.
+    Used only when nu > 0, so the nu = 0 paths above keep their exact old graphs."""
+
+    def step(v_next: jnp.ndarray, f_k: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
+        dxp, dxm, dzp, dzm = _one_sided_diffs(v_next, h)
+        h_central = 0.125 * ((dxp + dxm) ** 2 + (dzp + dzm) ** 2)
+        alpha_x = jnp.maximum(jnp.abs(dxp), jnp.abs(dxm))
+        alpha_z = jnp.maximum(jnp.abs(dzp), jnp.abs(dzm))
+        dissipation = 0.5 * alpha_x * (dxp - dxm) + 0.5 * alpha_z * (dzp - dzm)
+        h_num = h_central - dissipation
+        lap = (dxp - dxm + dzp - dzm) / h                 # (v[i+1] - 2 v[i] + v[i-1]) / h^2 in x and z
+        v_k = v_next + dt * (f_k - h_num + nu * lap)
+        return v_k, v_k
+
+    _, v_stack_rev = jax.lax.scan(step, v_terminal, running_rev)
+    return v_stack_rev
+
+
 def solve_hjb(
     m_field: jnp.ndarray, cost_params: CostParams, grid: Grid
 ) -> tuple[jnp.ndarray, jnp.ndarray]:
@@ -93,7 +117,11 @@ def solve_hjb(
     running = v_goal + cost_params.V_obs[None] + cost_params.W_fn(m_field)
 
     running_rev = running[:-1][::-1]  # f_{n_steps-1}, ..., f_0 — kolejność cofania w czasie
-    if cost_params.V_terminal is None:
+    if cost_params.nu > 0:                   # viscous (second-order) MFG; both terminal cases in one scan
+        v_terminal = (jnp.zeros_like(running[0]) if cost_params.V_terminal is None else
+                      jnp.broadcast_to(cost_params.V_terminal, running[0].shape).astype(running.dtype))
+        v_stack_rev = _scan_hjb_backward_visc(running_rev, v_terminal, h, dt, cost_params.nu)
+    elif cost_params.V_terminal is None:
         v_stack_rev = _scan_hjb_backward(running_rev, h, dt)
         v_terminal = jnp.zeros_like(running[0])
     else:                                    # V(T,.) = g(x)

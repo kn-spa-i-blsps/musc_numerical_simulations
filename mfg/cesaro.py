@@ -68,7 +68,7 @@ def solve_equilibrium_cesaro(scenario, cost_params, grid, *, damping, max_iters,
         #residuals.append(residual)
         #m = m_next   old method exceeding memory on GPU 5090
         policy = solve_hjb(m,cost_params,grid)[1]
-        m_new_raw=_rollout_density(m0,policy,grid)
+        m_new_raw=_rollout_density(m0,policy,grid,cost_params.nu)
         if it<max_iters:
             policy=None
         m_next=(1-damping) * m + damping * m_new_raw

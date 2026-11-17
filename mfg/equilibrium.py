@@ -38,31 +38,52 @@ class MacroCost:
 
 
 def solve_macro(scenario, grid: Grid, cost: MacroCost, *, damping: float, max_iters: int,
-                tol: float, burn_in: int, terminal: str | None = None) -> dict:
+                tol: float, burn_in: int, terminal: str | None = None, nu: float = 0.0) -> dict:
+    """nu: viscosity of the planner's MFG (0 = first-order, the old solver). The agents get no noise from it."""
+    if nu < 0 or nu * grid.dt / grid.step ** 2 > 0.125:     # explicit diffusion stable to 1/4; keep 2x margin
+        raise ValueError(f"nu={nu} outside [0, {0.125 * grid.step ** 2 / grid.dt:.3g}] for this grid")
     v_goal, v_obs = scenario.potentials(grid)
     v_term = None
     if terminal == "goal":                   # terminal cost g = goal potential (at T if time-dependent)
         v_term = v_goal[-1] if v_goal.ndim == 3 else v_goal
     elif terminal is not None:
         raise ValueError(f"unknown terminal cost {terminal!r}")
-    cp = CostParams(V_goal=v_goal, V_obs=v_obs, W_fn=cost.total, V_terminal=v_term)
+    cp = CostParams(V_goal=v_goal, V_obs=v_obs, W_fn=cost.total, V_terminal=v_term, nu=float(nu))
     t0 = time.time()
-    m_star, _, diag = solve_equilibrium_cesaro(scenario, cp, grid, damping=damping,
-                                               max_iters=max_iters, tol=tol, burn_in=burn_in)
-    value, policy = solve_hjb(m_star, cp, grid)
+    #m_star, _, diag = solve_equilibrium_cesaro(scenario, cp, grid, damping=damping,
+     #                                          max_iters=max_iters, tol=tol, burn_in=burn_in)
+    #value, policy = solve_hjb(m_star, cp, grid)
+    #m_star_grad = jax.vmap(lambda f: grid_gradient(f, grid.step))(m_star)
+    #return {
+    #    "phi0": value[0], "phi_grad": policy, "m_star": m_star, "m_star_grad": m_star_grad,
+    #    "dt": grid.dt, "step": grid.step,
+    #    "residual_history": np.asarray(diag.residual_history),
+    #    "cesaro_residual_history": np.asarray(diag.cesaro_residual_history),
+    #    "converged_last_iterate": bool(diag.converged),
+    #    "cesaro_converged": bool(diag.cesaro_converged),
+    #    "iters": int(diag.iters), "solve_seconds": time.time() - t0,
+    #    "max_F_at_mstar": float(jnp.max(cost.total(m_star))),
+    #    "nan": bool(jnp.any(jnp.isnan(m_star)) or jnp.any(jnp.isnan(policy))),
+    #}
+    m_star, last_policy, diag = solve_equilibrium_cesaro(scenario,cp, grid, damping=damping, max_iters=max_iters, tol=tol, burn_in=burn_in)
+    del last_policy
+    value, policy = solve_hjb(m_star,cp, grid)
+    phi0=value[0]
+    del value
+    max_F=float(jax.jit(lambda m: jnp.max(cost.total(m)))(m_star))
+    has_nan = bool(jax.jit(lambda m, p: jnp.isnan(m).any() | jnp.isnan(p).any())(m_star, policy))
     m_star_grad = jax.vmap(lambda f: grid_gradient(f, grid.step))(m_star)
     return {
-        "phi0": value[0], "phi_grad": policy, "m_star": m_star, "m_star_grad": m_star_grad,
+        "phi0": phi0, "phi_grad": policy, "m_star": m_star, "m_star_grad": m_star_grad,
         "dt": grid.dt, "step": grid.step,
         "residual_history": np.asarray(diag.residual_history),
         "cesaro_residual_history": np.asarray(diag.cesaro_residual_history),
         "converged_last_iterate": bool(diag.converged),
         "cesaro_converged": bool(diag.cesaro_converged),
         "iters": int(diag.iters), "solve_seconds": time.time() - t0,
-        "max_F_at_mstar": float(jnp.max(cost.total(m_star))),
-        "nan": bool(jnp.any(jnp.isnan(m_star)) or jnp.any(jnp.isnan(policy))),
+        "max_F_at_mstar": max_F,
+        "nan": has_nan,
     }
-
 
 def save_macro(path: str, sol: dict) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)

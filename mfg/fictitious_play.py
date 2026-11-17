@@ -11,7 +11,7 @@ import jax.numpy as jnp
 
 from env.base import Grid, Scenario
 from mfg.hjb import CostParams, solve_hjb
-from mfg.transport import push_forward_core
+from mfg.transport import diffuse_core, push_forward_core
 
 
 class FPDiagnostics(NamedTuple):
@@ -33,8 +33,26 @@ def _scan_density_forward(m0: jnp.ndarray, policy_steps: jnp.ndarray, h: float, 
     return m_stack
 
 
-def _rollout_density(m0: jnp.ndarray, policy: jnp.ndarray, grid: Grid) -> jnp.ndarray:
-    """Niesie m0 w przód pod całym polem policy -> trajektoria (n_steps+1, nx, nz)."""
+@jax.jit
+def _scan_density_forward_visc(m0: jnp.ndarray, policy_steps: jnp.ndarray, h: float, dt: float,
+                               nu: float) -> jnp.ndarray:
+    """Viscous transport dm/dt + div(m u) = nu Lap m: each step = the unchanged upwind advection step, then
+    one explicit diffusion step (first-order operator splitting, same order as the scheme). Used only for nu > 0."""
+
+    def step(m: jnp.ndarray, policy_k: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
+        m_next = diffuse_core(push_forward_core(m, policy_k[..., 0], policy_k[..., 1], h, dt), h, dt, nu)
+        return m_next, m_next
+
+    _, m_stack = jax.lax.scan(step, m0, policy_steps)
+    return m_stack
+
+
+def _rollout_density(m0: jnp.ndarray, policy: jnp.ndarray, grid: Grid, nu: float = 0.0) -> jnp.ndarray:
+    """Niesie m0 w przód pod całym polem policy -> trajektoria (n_steps+1, nx, nz).
+    nu > 0: viscous transport (must be the same nu as the HJB that produced policy); nu = 0: old graph."""
+    if nu > 0:
+        m_stack = _scan_density_forward_visc(m0, policy[: grid.n_steps], grid.step, grid.dt, nu)
+        return jnp.concatenate([m0[None], m_stack], axis=0)
     m_stack = _scan_density_forward(m0, policy[: grid.n_steps], grid.step, grid.dt)
     return jnp.concatenate([m0[None], m_stack], axis=0)
 

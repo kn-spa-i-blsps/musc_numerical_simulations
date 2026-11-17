@@ -57,7 +57,7 @@ def get_macro(cfg, sc, grid, cache_dir=CACHE_DIR):
     os.makedirs(cache_dir, exist_ok=True)
     print(f"[macro] solving {key} ...", flush=True)
     sol = solve_macro(sc, grid, cost, damping=fp["damping"], max_iters=fp["max_iters"],
-                      tol=fp["tol"], burn_in=fp["burn_in"], terminal=terminal)
+                      tol=fp["tol"], burn_in=fp["burn_in"], terminal=terminal, nu=fp.get("nu", 0.0))
     save_macro(path, sol)
     with open(path + ".json", "w") as f:
         f.write(tag)

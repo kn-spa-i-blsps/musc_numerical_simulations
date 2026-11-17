@@ -13,7 +13,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_DIR = os.environ.get("MUSC_CACHE", os.path.join(ROOT, "results", "cache"))
 
 _SCENARIO_KW = ("goal_gap_mult", "goal_spacing", "goal_clearance", "goal_attractor_shift",
-                "goal_geometry_spacing", "gate_width")
+                "goal_geometry_spacing", "gate_width", "goal_core_frac")
 
 
 def build_scenario(cfg, N):

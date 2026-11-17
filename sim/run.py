@@ -51,7 +51,8 @@ def prepare(cfg):
     rcfg = dict(dt_exec=cfg["dt_exec"], n_steps=int(round(grid.horizon / cfg["dt_exec"])),
                 nu=float(cfg.get("nu", 0.0)), cbf_on=cfg.get("cbf_on", True), c_w=cost.c_w, w_bar=cost.w_bar,
                 m_bar=cost.m_bar, c_dens=cfg["control"]["c_dens"], cbf=copy.deepcopy(cfg["cbf"]),
-                hold_on_arrival=cfg["control"].get("hold_on_arrival", False), log_xhat=cfg.get("log_xhat", False),
+                hold_on_arrival=cfg["control"].get("hold_on_arrival", False),
+                hold_radius_frac=float(cfg["control"].get("hold_radius_frac", 1.0)), log_xhat=cfg.get("log_xhat", False),
                 sigma_weights=cfg.get("sigma_weights"))
     fields = {k: sol[k] for k in ("phi_grad", "m_star", "m_star_grad")}
     fields.update(dt=sol["dt"], step=sol["step"])

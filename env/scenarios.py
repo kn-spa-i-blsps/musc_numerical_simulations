@@ -35,6 +35,11 @@ class SingleGateA:
       r_geom = r_goal(s_g) instead of r_goal; only the disc (hold step, success region) uses r_goal from
       goal_spacing. None (default) = r_geom = r_goal.
     gate_width=w: gate opening width override (default None = GATE_RATIO * W0); wall_x and gate_z unchanged.
+    goal_core_frac=c (conical only): flat core -- the cone term acts on relu(ra - c*r_goal), so the goal
+      pull vanishes inside a core of radius c*r_goal (only congestion and viscosity act there: the MFG
+      spreads the arrived crowd over the core instead of compressing it at the centre), and outside the
+      core the pull is the cone's. The tanh hold step, success region, goal observation and CBF priority
+      are unchanged. None (default) = old cone, exact old graph.
     goal_shape: "conical" (default) -- V_goal = cone to the waypoint + tanh hold step at r_goal;
       "flat" -- flat-bottomed: both terms act on relu(r - r_goal) only, so grad V_goal = 0 inside the
       disc and (up to the 0.05 m cone rounding) equals the conical gradient outside it.
@@ -48,7 +53,8 @@ class SingleGateA:
                  n_agents: int | None = None, goal_gap_mult: float | None = None,
                  goal_shape: str = "conical", goal_spacing: float | None = None,
                  goal_clearance: float | None = None, goal_attractor_shift: float | None = None,
-                 goal_geometry_spacing: float | None = None, gate_width: float | None = None):
+                 goal_geometry_spacing: float | None = None, gate_width: float | None = None,
+                 goal_core_frac: float | None = None):
         # geometry is sized by N; n_agents (default N) only sets the mass / agent count -- used by
         # the single-agent goal-hold unit test
         self.N_geom = N
@@ -79,6 +85,9 @@ class SingleGateA:
         if goal_shape not in ("conical", "flat"):
             raise ValueError(goal_shape)
         self.goal_shape = goal_shape
+        if goal_core_frac is not None and not (0.0 < goal_core_frac < 1.0 and goal_shape == "conical"):
+            raise ValueError(f"goal_core_frac={goal_core_frac} needs 0 < c < 1 and goal_shape='conical'")
+        self.goal_core = None if goal_core_frac is None else goal_core_frac * self.r_goal
         self.obs_penalty, self.wall_thickness, self.edge_softness = obs_penalty, wall_thickness, edge_softness
         self.start_box = (start_margin, self.wall_x - start_wall_gap,
                           self.z_off + start_margin, self.z_off + H - start_margin)
@@ -147,6 +156,8 @@ class SingleGateA:
             hold = self.w_hold * 0.5 * jnp.tanh(e / self.goal_softness)
             return progress + hold, v_obs
         ra = jnp.sqrt((x - self.attractor[0]) ** 2 + (z - self.attractor[1]) ** 2)  # = r by default
+        if self.goal_core is not None:                          # flat core: no pull for ra < goal_core
+            ra = jnp.maximum(ra - self.goal_core, 0.0)
         progress = self.w_goal * jnp.sqrt(ra ** 2 + 0.05 ** 2)  # conical: non-vanishing pull
         hold = self.w_hold * 0.5 * (jnp.tanh((r - self.r_goal) / self.goal_softness) + 1.0)
         return progress + hold, v_obs

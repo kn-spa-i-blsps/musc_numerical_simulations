@@ -1,0 +1,10 @@
+# Training trajectories for the learned predictor (v4): real-arm closed loop with the final settings
+# (nu 0.5, goal core 0.75, hold off). datagen: true saves only true positions (pos_seed*.npz); the stale/noisy
+# features are built afterwards for any ages. single_gate only -> two_gates / pillar stay unseen (transfer gate).
+# Seeds 100-119: disjoint from the evaluation seeds 0-9. T_frame spans 25-400 ms across the cells.
+name: datagen_single_gate
+geometry: single_gate
+datagen: true
+seeds: [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119]
+blocks:
+  - {N: [25, 50, 100], arm: [real], t_slot: [0.001, 0.002, 0.004]}

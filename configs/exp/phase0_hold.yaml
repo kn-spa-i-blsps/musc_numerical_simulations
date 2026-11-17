@@ -1,0 +1,5 @@
+name: phase0_hold
+geometry: single_gate
+seeds: [0,1]
+blocks:
+  - {N: [100], arm: [real], control.hold_on_arrival: [false, true]}

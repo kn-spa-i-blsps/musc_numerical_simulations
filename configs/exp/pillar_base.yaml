@@ -1,0 +1,7 @@
+# Stage 7 prerequisite: computes and caches the pillar solves (N=50, 100) and gives a first real / noise_only read.
+# The full stage-7 file (both axes) reuses these solves.
+name: pillar_base
+geometry: pillar
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  - {N: [50, 100], arm: [real, noise_only]}

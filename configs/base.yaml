@@ -20,8 +20,13 @@ fp:                       # fictitious play
   max_iters: 800
   burn_in: 200
   tol: 0.005
+  nu: 0.5                 # viscosity [m^2/s] of the planner's MFG (agents get no noise). Phase 0 (2026-11-17):
+                          # nu=0.5 is the only tested value with a true fixed point (TV 0.001, iterate converges);
+                          # nu=0 cycles (TV 0.95), 0.05 (0.82), 0.2 (0.10). Enters the MFG cache key.
 control:
   c_dens: 1.0             # weight of the local density-tracking term
+  hold_on_arrival: true   # u_nom=0 inside r_goal when the nearest ESTIMATED neighbour is >= d_safe away.
+                          # Phase 0, N=100: in-disc contact pair-steps -89%, settled ~unchanged. Not in the cache key.
 cbf:
   d_safe: 0.7             # = D_COLLISION 0.30 + 0.40 margin (operating margin)
   r_wall: 0.2             # wall half-thickness 0.05 + drone radius 0.15

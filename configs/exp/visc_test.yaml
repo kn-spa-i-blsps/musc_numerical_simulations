@@ -1,0 +1,7 @@
+# Viscosity test: does fp.nu > 0 make the FP iterate converge and m* a fixed point of the best response?
+# One solve per nu (fp.nu enters the cache key). N=50, real arm, seed 0; compare with the nu=0 phase-0 run.
+name: visc_test
+geometry: single_gate
+seeds: [0]
+blocks:
+  - {N: [50], arm: [real], fp.nu: [0.05, 0.2, 0.5]}

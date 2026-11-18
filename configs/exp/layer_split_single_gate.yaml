@@ -1,0 +1,8 @@
+# Stage 5 (contrast to stage 3): on trivial routing (one centred gate) MFG-side prediction should buy little throughput.
+# Only the four split arms: the plain arms (real, learned, noise_only, fresh, cvls) at the same N / t_slot / seeds are
+# crossover_single_gate's cells. Same split arms as layer_split_two_gates. Solves cached from crowding_test / crossover.
+name: layer_split_single_gate
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  - {N: [50, 100], arm: ["split:real/learned", "split:learned/real", "split:real/cvls", "split:cvls/real"]}

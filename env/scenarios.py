@@ -40,6 +40,10 @@ class SingleGateA:
       spreads the arrived crowd over the core instead of compressing it at the centre), and outside the
       core the pull is the cone's. The tanh hold step, success region, goal observation and CBF priority
       are unchanged. None (default) = old cone, exact old graph.
+    start_spacing=s: density-matched start -- the start box is shrunk (same aspect ratio, same wall gap,
+      centred on the gate) to area N*(sqrt(3)/2)*s^2, so the hex lattice spacing is s for every N (the default
+      box has a fixed area, so its spacing shrinks like N^-1/2). Never enlarged beyond the default box. Moves
+      initial_density, initial_positions and the path-length horizon with it. None (default) = old box.
     goal_shape: "conical" (default) -- V_goal = cone to the waypoint + tanh hold step at r_goal;
       "flat" -- flat-bottomed: both terms act on relu(r - r_goal) only, so grad V_goal = 0 inside the
       disc and (up to the 0.05 m cone rounding) equals the conical gradient outside it.
@@ -54,7 +58,7 @@ class SingleGateA:
                  goal_shape: str = "conical", goal_spacing: float | None = None,
                  goal_clearance: float | None = None, goal_attractor_shift: float | None = None,
                  goal_geometry_spacing: float | None = None, gate_width: float | None = None,
-                 goal_core_frac: float | None = None):
+                 goal_core_frac: float | None = None, start_spacing: float | None = None):
         # geometry is sized by N; n_agents (default N) only sets the mass / agent count -- used by
         # the single-agent goal-hold unit test
         self.N_geom = N
@@ -91,6 +95,13 @@ class SingleGateA:
         self.obs_penalty, self.wall_thickness, self.edge_softness = obs_penalty, wall_thickness, edge_softness
         self.start_box = (start_margin, self.wall_x - start_wall_gap,
                           self.z_off + start_margin, self.z_off + H - start_margin)
+        if start_spacing is not None:
+            x0, x1, z0, z1 = self.start_box
+            area = self.N * (math.sqrt(3.0) / 2.0) * float(start_spacing) ** 2
+            f = math.sqrt(area / ((x1 - x0) * (z1 - z0)))              # linear scale
+            if f < 1.0:                                                # never enlarge (f >= 1: default box)
+                zc, hz = (z0 + z1) / 2.0, f * (z1 - z0) / 2.0
+                self.start_box = (x1 - f * (x1 - x0), x1, zc - hz, zc + hz)
         self.start_softness = start_softness
 
     @property

@@ -39,8 +39,9 @@ def apply_globals(cfg):
         const.T_SLOT = pc.T_SLOT = float(cfg["t_slot"])
     if cfg.get("sigma_scale") is not None:
         pc.SIGMA_R, pc.SIGMA_THETA = pc.SIGMA_R * float(cfg["sigma_scale"]), pc.SIGMA_THETA * float(cfg["sigma_scale"])
+    pc.NOISE_HOLD = bool(cfg.get("noise_hold", False))   # held measurement noise (one draw per broadcast)
     return {"matmul_precision": jax.config.jax_default_matmul_precision, "t_slot": pc.T_SLOT,
-            "sigma_r": pc.SIGMA_R, "sigma_theta": pc.SIGMA_THETA}
+            "sigma_r": pc.SIGMA_R, "sigma_theta": pc.SIGMA_THETA, "noise_hold": pc.NOISE_HOLD}
 
 
 def prepare(cfg):
@@ -87,6 +88,9 @@ def run_cell(cfg, arm, seeds, out_dir, weights=None, datagen=False, skip_existin
     for seed in seeds:
         if p_loss > 0.0:   # packet-loss pattern per seed: globals are read at trace time -> re-trace
             pc.P_LOSS, pc.LOSS_SALT = p_loss, 1000 + seed
+            run = make_arm_rollout(arm, sc, rcfg, sol, weights)
+        if pc.NOISE_HOLD:  # held-noise draws per seed: same re-trace as packet loss
+            pc.NOISE_SALT = 2000 + seed
             run = make_arm_rollout(arm, sc, rcfg, sol, weights)
         t0 = time.time()
         logs = jax.device_get(run(jax.random.PRNGKey(seed), fields))

@@ -55,6 +55,41 @@ def _loss_uniform(f, j):
     return h.astype(jnp.float32) / jnp.float32(4294967296.0)
 
 
+# Held measurement noise. NOISE_HOLD = False (default): range/bearing noise is redrawn every control step. True: the
+# noise of agent j's broadcast in frame f, as received by agent i, is drawn once from a hash of (f, j, i, NOISE_SALT)
+# and held until j's next broadcast, as a receiver holding one sample per frame would. real and noise_only share the
+# draws (paired). The older broadcasts in the learned / cvls window keep the draw of their own frame (f0 - m); cv and
+# smith are not covered and are refused.
+NOISE_HOLD = False
+NOISE_SALT = 0
+
+
+def _hash_uniform(f, j, i, c):
+    h = (f.astype(jnp.uint32) * jnp.uint32(73856093)) ^ (j.astype(jnp.uint32) * jnp.uint32(19349663)) \
+        ^ (i.astype(jnp.uint32) * jnp.uint32(83492791)) ^ (jnp.uint32(NOISE_SALT) * jnp.uint32(2654435761)) \
+        ^ (jnp.uint32(c) * jnp.uint32(40503))
+    h = h ^ (h >> 16); h = h * jnp.uint32(0x7FEB352D); h = h ^ (h >> 15); h = h * jnp.uint32(0x846CA68B); h = h ^ (h >> 16)
+    return (h.astype(jnp.float32) + 0.5) / jnp.float32(4294967296.0)
+
+
+def _held_normals(f0: jnp.ndarray, N: int):
+    """Two (N_j, N_i) standard-normal arrays (range, bearing), fixed per (frame f0[j], j, i) via Box-Muller."""
+    j = jnp.arange(N)[:, None]; i = jnp.arange(N)[None, :]; f = f0[:, None]
+    out = []
+    for c in (0, 2):
+        u1, u2 = _hash_uniform(f, j, i, c), _hash_uniform(f, j, i, c + 1)
+        out.append(jnp.sqrt(-2.0 * jnp.log(u1)) * jnp.cos(2.0 * jnp.pi * u2))
+    return out
+
+
+def _held_rel_vec(true_rel: jnp.ndarray, f0: jnp.ndarray, N: int) -> jnp.ndarray:
+    """As _noisy_rel_vec(0, true_rel, .) but with the noise held per broadcast (NOISE_HOLD)."""
+    zr, zb = _held_normals(f0, N)
+    rng = jnp.linalg.norm(true_rel, axis=-1) + SIGMA_R * zr
+    brg = jnp.arctan2(true_rel[..., 1], true_rel[..., 0]) + SIGMA_THETA * zb
+    return jnp.stack([rng * jnp.cos(brg), rng * jnp.sin(brg)], axis=-1)
+
+
 def _noisy_rel_vec(pos_from: jnp.ndarray, pos_to: jnp.ndarray, key: jax.Array) -> jnp.ndarray:
     """TWR-style range+bearing estimate of the vector from pos_from to pos_to, both evaluated at
     the SAME past instant (the ranging-exchange time), corrupted by independent range/bearing
@@ -77,7 +112,7 @@ def _mlp_forward(predictor_params: dict, X: jnp.ndarray) -> jnp.ndarray:
 
 
 def learned_features_dense(history, k_now, dt_exec, N, key, *, rel_now_ij, H_then, age, k_then,
-                            T_frame, T_frame_steps, positions_now):
+                            T_frame, T_frame_steps, positions_now, f0=None):
     """Builds the (N_i, N_j, 5*K_WINDOW_LEARNED) feature tensor for condition='learned', reusing
     the m=0 block already computed by perceive() (rel_now_ij, H_then, etc.) and extending it back
     K_WINDOW_LEARNED-1 more TDMA frames. Feature order per m-block: (range_m, bearing_m, age_m,
@@ -100,7 +135,8 @@ def learned_features_dense(history, k_now, dt_exec, N, key, *, rel_now_ij, H_the
         true_rel_m = j_pos_then_m[:, None, :] - H_then_m          # (N_j, N_i, 2)
 
         key, k_m_noise = jax.random.split(key)
-        rel_m = _noisy_rel_vec(jnp.zeros_like(true_rel_m), true_rel_m, k_m_noise)
+        rel_m = (_held_rel_vec(true_rel_m, f0 - m, N) if f0 is not None else    # NOISE_HOLD: broadcast f0-m's draw
+                 _noisy_rel_vec(jnp.zeros_like(true_rel_m), true_rel_m, k_m_noise))
         rel_m_ij = jnp.transpose(rel_m, (1, 0, 2))                # (N_i, N_j, 2)
         range_m = jnp.linalg.norm(rel_m_ij, axis=-1)
         bearing_m = jnp.arctan2(rel_m_ij[..., 1], rel_m_ij[..., 0])
@@ -292,6 +328,10 @@ def perceive(condition: str, history: jnp.ndarray, k_now: int, dt_exec: float, N
     T_frame_steps = max(1, int(round(T_frame / dt_exec)))
     t_sim = k_now * dt_exec
     age = tdma_age(t_sim, N)                              # (N,) -- age of neighbour-slot j
+    if NOISE_HOLD:
+        if condition not in ("real", "noise_only", "learned", "cvls"):
+            raise ValueError(f"NOISE_HOLD supports real / noise_only / learned / cvls only, not {condition!r}")
+        f0 = jnp.floor((t_sim - jnp.arange(N) * T_SLOT) / T_frame).astype(jnp.int32)   # j's latest broadcast frame
     if condition == "noise_only":                         # DIAGNOSTIC: perfect delay compensation,
         age = jnp.zeros_like(age)                         # sensor noise kept (same key use as real)
     age_steps = jnp.round(age / dt_exec).astype(jnp.int32)  # (N,)
@@ -302,7 +342,8 @@ def perceive(condition: str, history: jnp.ndarray, k_now: int, dt_exec: float, N
     true_rel_now = j_pos_then[:, None, :] - H_then           # (N_j, N_i, 2): j's pos - i's pos, both at j's broadcast time
 
     key, k_now_noise = jax.random.split(key)
-    rel_now = _noisy_rel_vec(jnp.zeros_like(true_rel_now), true_rel_now, k_now_noise)  # (N_j,N_i,2)
+    rel_now = (_held_rel_vec(true_rel_now, f0, N) if NOISE_HOLD else
+               _noisy_rel_vec(jnp.zeros_like(true_rel_now), true_rel_now, k_now_noise))  # (N_j,N_i,2)
     rel_now_ij = jnp.transpose(rel_now, (1, 0, 2))           # (N_i, N_j, 2)
     x_hat_real = positions_now[:, None, :] + rel_now_ij       # (N, N, 2)
 
@@ -337,7 +378,7 @@ def perceive(condition: str, history: jnp.ndarray, k_now: int, dt_exec: float, N
         X_full, _ = learned_features_dense(history, k_now, dt_exec, N, key,
                                             rel_now_ij=rel_now_ij, H_then=H_then, age=age,
                                             k_then=k_then, T_frame=T_frame, T_frame_steps=T_frame_steps,
-                                            positions_now=positions_now)
+                                            positions_now=positions_now, f0=f0 if NOISE_HOLD else None)
         rel_pred_ij = _mlp_forward(predictor_params, X_full)  # (N_i, N_j, 2)
         return positions_now[:, None, :] + rel_pred_ij
 
@@ -348,7 +389,7 @@ def perceive(condition: str, history: jnp.ndarray, k_now: int, dt_exec: float, N
         X_full, _ = learned_features_dense(history, k_now, dt_exec, N, key,
                                             rel_now_ij=rel_now_ij, H_then=H_then, age=age,
                                             k_then=k_then, T_frame=T_frame, T_frame_steps=T_frame_steps,
-                                            positions_now=positions_now)
+                                            positions_now=positions_now, f0=f0 if NOISE_HOLD else None)
         B = X_full.reshape(N, N, K_WINDOW_LEARNED, 5)
         p = jnp.stack([B[..., 0] * jnp.cos(B[..., 1]), B[..., 0] * jnp.sin(B[..., 1])], -1) - B[..., 3:5]
         tau = -B[..., 2:3]                                                       # (N,N,K,1)

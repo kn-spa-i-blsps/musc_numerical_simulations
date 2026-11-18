@@ -3,3 +3,4 @@ __pycache__/
 *.egg-info/
 .venv/
 test_cuda.py
+analysis/

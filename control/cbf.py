@@ -9,10 +9,12 @@ dynamics x' = u.
 
 Neighbour pairs use reciprocal responsibility (each agent of a pair guarantees its share a_ij of the
 barrier rate; a_ij + a_ji = 1). Liveness: goal-biased priority — the agent nearer the goal gets the
-larger share a_ij (more freedom), the one behind yields. Fallback: soft slack s (never an emergency
-stop) — a QP whose hard version is infeasible returns the minimum-violation control. For h=|d|^2-r^2
-the Euler step only adds dt^2|du|^2 >= 0 to h, so the linear constraint is conservative in discrete
-time. Solvers (prm.qp_solver): "exact_hard" (default) -- lexicographic: walls/arena rows get their own
+larger share a_ij (more freedom), the one behind yields. Optional arrival_yield: if i is inside the
+goal disc and j is not (from p_i / x_hat_j and known r_goal), i takes prio_min (yields to inbound);
+the symmetric case gives i the large share. Fallback: soft slack s (never an emergency stop) — a QP
+whose hard version is infeasible returns the minimum-violation control. For h=|d|^2-r^2 the Euler
+step only adds dt^2|du|^2 >= 0 to h, so the linear constraint is conservative in discrete time.
+Solvers (prm.qp_solver): "exact_hard" (default) -- lexicographic: walls/arena rows get their own
 slack (zero unless the geometry alone is infeasible), neighbour rows share one slack, so an infeasible
 neighbour set never loosens a wall; "exact" (legacy, smoke attempt 3) -- ONE slack shared by all rows
 (the P1 wall-penetration bug); "boxosqp" -- the per-row-slack QP above via jaxopt (reference).
@@ -57,6 +59,8 @@ class CBFParams(NamedTuple):
     margin_q_edges: tuple | None = None  # sigma_bin: log-sigma bin edges (4); q = margin_q_vals[bin] per pair
     margin_q_vals: tuple | None = None   # (5); None = the scalar margin_q
     margin_cap: float | None = None      # sigma mode: cap on d_safe_ij (and sigma_c <= (cap - D_COLLISION)/k); None = no cap
+    arrival_yield: bool = False          # inside-disc agents yield CBF share to inbound (goal jam)
+    r_goal: float = 0.0                  # goal disc radius [m]; set by the rollout from the scenario
 
 
 def _closest_on_segments(p, segs):
@@ -93,6 +97,11 @@ def build_rows(p_i, x_hat_i, self_idx, goal, arena, segs, prm: CBFParams, d_safe
     r_j = jnp.linalg.norm(goal[None] - x_hat_i[idx], axis=-1)
     share = jax.nn.sigmoid(prm.prio_gain * (r_j - r_i))
     share = jnp.clip(share, prm.prio_min, 1.0 - prm.prio_min)
+    if prm.arrival_yield and prm.r_goal > 0.0:
+        i_in = r_i <= prm.r_goal
+        j_in = r_j <= prm.r_goal
+        share = jnp.where(i_in & ~j_in, prm.prio_min, share)            # arrived yields to inbound
+        share = jnp.where(~i_in & j_in, 1.0 - prm.prio_min, share)      # inbound keeps priority
     share = jnp.where(h >= 0, share, 0.5)
     a_nb = 2.0 * rel_k
     lo_nb = jnp.where(valid, -share * prm.gamma * h, -BIG)

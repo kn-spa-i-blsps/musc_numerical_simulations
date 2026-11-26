@@ -30,6 +30,8 @@ control:
   c_dens: 1.0             # weight of the local density-tracking term
   hold_on_arrival: false  # off: hold stops arrivals at the disc edge and blocks the rest (crowding_test, N=100: arrival
                           # median 22.4 s with hold vs 14-15.5 s without). Option kept (+ hold_radius_frac). Not in the cache key.
+  arrived_c_dens_boost: 2.0  # inside r_goal: c_dens *= (1+boost) so arrived agents spread; inbound unchanged.
+                             # Not in the MFG cache key. Set 0 to disable. See configs/exp/goal_clear.yaml.
 cbf:
   d_safe: 0.7             # = D_COLLISION 0.30 + 0.40 margin (operating margin)
   r_wall: 0.2             # wall half-thickness 0.05 + drone radius 0.15
@@ -45,3 +47,5 @@ cbf:
   tol: 1.0e-05
   maxiter: 2000
   qp_solver: exact_hard
+  arrival_yield: true     # arrived (in disc) yield CBF share to inbound; uses scenario r_goal. Not in cache key.
+

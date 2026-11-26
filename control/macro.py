@@ -12,6 +12,10 @@ the CBF uses it for goal-biased priority.
 
 Hold-on-arrival (optional): an agent inside r_goal whose nearest ESTIMATED neighbour is at
 least d_hold away gets u_nom = 0; otherwise u_nom is unchanged (the density term can still separate).
+
+Arrived density boost (optional): agents with ||p_i - goal|| <= r_goal use
+c_dens * (1 + arrived_c_dens_boost) on the local congestion term so the crowd already in the
+disc spreads harder; agents still approaching keep the base c_dens (UWB positions only).
 """
 import jax.numpy as jnp
 
@@ -32,7 +36,8 @@ def goal_observation(positions, goal):
     return rng, bearing
 
 
-def nominal_control(positions, x_hat, t_sim, N, macro, *, c_w, w_bar, m_bar, c_dens, hold=None):
+def nominal_control(positions, x_hat, t_sim, N, macro, *, c_w, w_bar, m_bar, c_dens, hold=None,
+                    goal=None, r_goal=None, arrived_c_dens_boost=0.0):
     """macro: dict with phi_grad (T+1,nx,nz,2), m_star (T+1,nx,nz), m_star_grad (T+1,nx,nz,2),
     dt, step. hold: None or (goal (2,), r_goal, d_hold) for hold-on-arrival. Returns (u_nom (N,2), diag)."""
     dt, step = macro["dt"], macro["step"]
@@ -44,14 +49,18 @@ def nominal_control(positions, x_hat, t_sim, N, macro, *, c_w, w_bar, m_bar, c_d
     over = jnp.maximum(m_hat - m_bar, 0.0)
     grad_local = (2.0 * c_w * excess[:, None] * (grad_m_hat - grad_m_star)
                   + 2.0 * w_bar * over[:, None] * grad_m_hat)
-    u = route - c_dens * grad_local
+    c_eff = jnp.full(positions.shape[0], c_dens)
+    if arrived_c_dens_boost > 0.0 and goal is not None and r_goal is not None:
+        inside = jnp.linalg.norm(positions - jnp.asarray(goal)[None], axis=-1) <= r_goal
+        c_eff = c_dens * (1.0 + arrived_c_dens_boost * inside)
+    u = route - c_eff[:, None] * grad_local
     held = jnp.zeros(positions.shape[0], bool)
     if hold is not None:
-        goal, r_goal, d_hold = hold
+        goal_h, r_hold, d_hold = hold
         d_hat = jnp.linalg.norm(positions[:, None] - x_hat, axis=-1)
         d_hat = jnp.where(jnp.eye(N, dtype=bool), jnp.inf, d_hat)
-        held = (jnp.linalg.norm(positions - jnp.asarray(goal)[None], axis=-1) <= r_goal) & \
+        held = (jnp.linalg.norm(positions - jnp.asarray(goal_h)[None], axis=-1) <= r_hold) & \
                (jnp.min(d_hat, axis=1) >= d_hold)
         u = jnp.where(held[:, None], 0.0, u)
     return u, {"m_hat": m_hat, "m_star": m_star, "route_mag": jnp.linalg.norm(route, axis=-1),
-               "local_mag": c_dens * jnp.linalg.norm(grad_local, axis=-1), "held": held}
+               "local_mag": c_eff * jnp.linalg.norm(grad_local, axis=-1), "held": held}

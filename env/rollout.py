@@ -27,9 +27,12 @@ def make_rollout(condition, scenario, cfg, *, predictor_params=None, field_param
     arena_arr = jnp.array([W, H])
     goal = jnp.asarray(scenario.goal)
     segs = jnp.asarray(scenario.wall_segments())
-    prm = CBFParams(**cfg["cbf"])
+    cbf_kw = dict(cfg["cbf"])
+    cbf_kw["r_goal"] = float(scenario.r_goal)                          # known map; for arrival_yield
+    prm = CBFParams(**cbf_kw)
     dt_exec, n_steps, nu = cfg["dt_exec"], cfg["n_steps"], cfg["nu"]
     cbf_on = cfg["cbf_on"]
+    arrived_c_dens_boost = float(cfg.get("arrived_c_dens_boost", 0.0))
     # hold region: r <= hold_radius_frac * r_goal (default 1.0 = the whole disc, the old behaviour)
     hold = ((goal, cfg.get("hold_radius_frac", 1.0) * scenario.r_goal, prm.d_safe)
             if cfg.get("hold_on_arrival", False) else None)
@@ -58,7 +61,8 @@ def make_rollout(condition, scenario, cfg, *, predictor_params=None, field_param
         t_sim = k * dt_exec
         u_nom, mdiag = nominal_control(positions, x_hat_mfg, t_sim, N, macro, c_w=cfg["c_w"],
                                        w_bar=cfg["w_bar"], m_bar=cfg["m_bar"], c_dens=cfg["c_dens"],
-                                       hold=hold)
+                                       hold=hold, goal=goal, r_goal=scenario.r_goal,
+                                       arrived_c_dens_boost=arrived_c_dens_boost)
         nrm = jnp.linalg.norm(u_nom, axis=-1, keepdims=True)
         u_nom = u_nom * jnp.minimum(1.0, V_MAX / jnp.maximum(nrm, 1e-9))
         d_safe_pair = v_closing = sigma_c = None

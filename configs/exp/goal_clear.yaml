@@ -1,0 +1,16 @@
+# Goal-jam A/B: does arrived_c_dens_boost + CBF arrival_yield clear the finish-line queue?
+# Safe-staleness only (noise_only + real at t_slot=1 ms) so contacts/queue are crowding, not delay.
+# Reuses existing single_gate MFG caches (nu/core unchanged — no new solves).
+# Read with: python -m analysis.goal_crowding results/goal_clear --at 12 20
+# Compare baseline vs fix on: arr_p50/p90, queue@T, contact_in, settled.
+name: goal_clear
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4]
+set: {t_slot: 0.001}
+variants:
+  baseline:
+    control.arrived_c_dens_boost: 0.0
+    cbf.arrival_yield: false
+  fix: {}
+blocks:
+  - {N: [50, 100], arm: [noise_only, real], variant: [baseline, fix]}

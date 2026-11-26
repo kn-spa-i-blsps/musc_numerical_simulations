@@ -1,0 +1,9 @@
+# Figure 1 with compensation: the uncompensated threshold and how far the predictors push it. Single gate, N = 50 / 100,
+# T_frame {125, 175, 250, 350, 500} ms. real is rerun here (same hardware as learned / cvls -> paired seeds).
+# Learned predictor input ages stay inside its training range (newest broadcast up to 1 s).
+name: slot_sweep_comp
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  - {N: [50], arm: [real, learned, cvls], t_slot: [0.0025, 0.0035, 0.005, 0.007, 0.010]}
+  - {N: [100], arm: [real, learned, cvls], t_slot: [0.00125, 0.00175, 0.0025, 0.0035, 0.005]}

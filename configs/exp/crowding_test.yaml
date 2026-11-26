@@ -1,0 +1,21 @@
+# Goal-region crowding: which goal design lets the swarm enter AND spread without compression?
+# Safe-staleness regime only (noise_only, and real at t_slot = 1 ms -> T_frame 50 / 100 ms: no staleness
+# collisions in the pilot), so every contact inside the disc is goal crowding, not delay.
+# Read with: python -m analysis.goal_crowding results/crowding_test
+#   cone_hold   current default: cone to the centre + hold in the whole disc   (entry blocking, slow arrival)
+#   cone_free   cone, no hold                                                   (fast arrival, centre compression)
+#   core75/60   flat core of radius 0.75 / 0.6 r_goal, no hold                  (option A)
+#   core75_hold flat core 0.75 + hold only inside the core                      (option C)
+# New solves: core75, core60 at N = 50, 100 (4 x ~11 min); the cone variants reuse the pilot caches.
+name: crowding_test
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4]
+set: {t_slot: 0.001}
+variants:
+  cone_hold:   {control.hold_on_arrival: true}
+  cone_free:   {control.hold_on_arrival: false}
+  core75:      {scenario.goal_core_frac: 0.75, control.hold_on_arrival: false}
+  core60:      {scenario.goal_core_frac: 0.6, control.hold_on_arrival: false}
+  core75_hold: {scenario.goal_core_frac: 0.75, control.hold_on_arrival: true, control.hold_radius_frac: 0.75}
+blocks:
+  - {N: [50, 100], arm: [noise_only, real], variant: [cone_hold, cone_free, core75, core60, core75_hold]}

@@ -1,0 +1,12 @@
+# Extra seeds (10-29) on the uncompensated threshold cells T_frame {125, 150, 175} ms, real arm, fixed start
+# (as slot_sweep) and matched start (as slot_sweep_density). Seeds 0-9 are in those two experiments; new seeds are
+# independent, so they pool with them across machines (no pairing needed).
+name: slot_sweep_seeds
+geometry: single_gate
+seeds: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+blocks:
+  - {N: [25], arm: [real], t_slot: [0.005, 0.006, 0.007]}
+  - {N: [50], arm: [real], t_slot: [0.0025, 0.003, 0.0035]}
+  - {N: [100], arm: [real], t_slot: [0.00125, 0.0015, 0.00175]}
+  - {N: [25], arm: [real], scenario.start_spacing: [1.051], t_slot: [0.005, 0.006, 0.007]}
+  - {N: [50], arm: [real], scenario.start_spacing: [1.051], t_slot: [0.0025, 0.003, 0.0035]}

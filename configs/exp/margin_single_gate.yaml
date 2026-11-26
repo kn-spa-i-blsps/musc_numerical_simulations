@@ -1,0 +1,18 @@
+# Stage 6: the cheap no-predictor competitor. Real arm (stale, noisy estimate) with a larger safety distance instead of
+# a predictor. Constant d_safe (all pairs) and the staleness margin d_ij = min(0.30 + k * |v_hat_ij| * age_j, 1.5 m)
+# (grows with how old and how fast the neighbour is; no calibration). The sigma (conformal) margin is dropped: it needs
+# the predictor and a calibration. d070 = base config = crossover_single_gate real (bit-identical check).
+# Read: safety-throughput plane (ever_collided vs Q) against learned / cvls / fresh from crossover_single_gate.
+name: margin_single_gate
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+variants:
+  d070:     {cbf.d_safe: 0.7}
+  d090:     {cbf.d_safe: 0.9}
+  d110:     {cbf.d_safe: 1.1}
+  d130:     {cbf.d_safe: 1.3}
+  stale_k05: {cbf.margin_mode: staleness, cbf.margin_k: 0.5}
+  stale_k10: {cbf.margin_mode: staleness, cbf.margin_k: 1.0}
+  stale_k15: {cbf.margin_mode: staleness, cbf.margin_k: 1.5}
+blocks:
+  - {N: [50, 100], arm: [real], variant: [d070, d090, d110, d130, stale_k05, stale_k10, stale_k15]}

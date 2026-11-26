@@ -1,0 +1,12 @@
+# Stage 1 (claim C1a): ever_collided depends on N and t_slot only through T_frame = N * t_slot.
+# Shared T_frame grid {75, 100, 125, 150, 175, 200, 250, 300} ms, dense around the transition found in the pilot
+# (safe <= 100-125 ms, ~0.7 at 200-250 ms). Real arm only. Across N = independent seed sets (no pairing).
+# Judge the collapse only in T_frame columns not saturated at 0 or 1; bound max |dN| (95 % upper, bootstrap the
+# max itself) against the T_frame effect (95 % lower). Defaults from base.yaml (nu 0.5, goal core 0.75, hold off).
+name: slot_sweep
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  - {N: [25], arm: [real], t_slot: [0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.010, 0.012]}
+  - {N: [50], arm: [real], t_slot: [0.0015, 0.002, 0.0025, 0.003, 0.0035, 0.004, 0.005, 0.006]}
+  - {N: [100], arm: [real], t_slot: [0.00075, 0.001, 0.00125, 0.0015, 0.00175, 0.002, 0.0025, 0.003]}

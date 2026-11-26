@@ -1,0 +1,12 @@
+# Crowding under staleness: at the T_frame transition (200 ms), do goal-region contacts differ between goal designs?
+# All solves are cached from crowding_test. Read with: python -m analysis.goal_crowding results/crowding_stale
+name: crowding_stale
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4]
+variants:
+  cone_free: {control.hold_on_arrival: false}
+  core60:    {scenario.goal_core_frac: 0.6, control.hold_on_arrival: false}
+  core75:    {scenario.goal_core_frac: 0.75, control.hold_on_arrival: false}
+blocks:
+  - {N: [50], arm: [real], t_slot: [0.004], variant: [cone_free, core60, core75]}    # T_frame 200 ms
+  - {N: [100], arm: [real], t_slot: [0.002], variant: [cone_free, core60, core75]}   # T_frame 200 ms

@@ -10,6 +10,9 @@ scenario:
   obs_penalty: 200.0      # soft macro wall
   wall_thickness: 0.3
   edge_softness: 0.25
+  goal_core_frac: 0.75    # flat core: no goal pull inside 0.75 r_goal, only congestion. crowding_stale (2026-11-17,
+                          # T_frame 200 ms): ever_collided N=50 0.44 -> 0.18, in-disc contacts N=100 -78% vs the plain
+                          # cone; transit contacts unchanged; arrival +1.7 s median at N=100. Enters the MFG cache key.
 macro_cost:
   c_w: 1.0                # congestion W(m) = c_w m^2
   w_bar: 10.0             # soft collision barrier
@@ -20,8 +23,13 @@ fp:                       # fictitious play
   max_iters: 800
   burn_in: 200
   tol: 0.005
+  nu: 0.5                 # viscosity [m^2/s] of the planner's MFG (agents get no noise). Phase 0 (2026-11-17):
+                          # nu=0.5 is the only tested value with a true fixed point (TV 0.001, iterate converges);
+                          # nu=0 cycles (TV 0.95), 0.05 (0.82), 0.2 (0.10). Enters the MFG cache key.
 control:
   c_dens: 1.0             # weight of the local density-tracking term
+  hold_on_arrival: false  # off: hold stops arrivals at the disc edge and blocks the rest (crowding_test, N=100: arrival
+                          # median 22.4 s with hold vs 14-15.5 s without). Option kept (+ hold_radius_frac). Not in the cache key.
 cbf:
   d_safe: 0.7             # = D_COLLISION 0.30 + 0.40 margin (operating margin)
   r_wall: 0.2             # wall half-thickness 0.05 + drone radius 0.15

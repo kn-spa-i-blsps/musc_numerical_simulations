@@ -13,7 +13,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_DIR = os.environ.get("MUSC_CACHE", os.path.join(ROOT, "results", "cache"))
 
 _SCENARIO_KW = ("goal_gap_mult", "goal_spacing", "goal_clearance", "goal_attractor_shift",
-                "goal_geometry_spacing", "gate_width")
+                "goal_geometry_spacing", "gate_width", "goal_core_frac", "start_spacing")
 
 
 def build_scenario(cfg, N):
@@ -57,7 +57,7 @@ def get_macro(cfg, sc, grid, cache_dir=CACHE_DIR):
     os.makedirs(cache_dir, exist_ok=True)
     print(f"[macro] solving {key} ...", flush=True)
     sol = solve_macro(sc, grid, cost, damping=fp["damping"], max_iters=fp["max_iters"],
-                      tol=fp["tol"], burn_in=fp["burn_in"], terminal=terminal)
+                      tol=fp["tol"], burn_in=fp["burn_in"], terminal=terminal, nu=fp.get("nu", 0.0))
     save_macro(path, sol)
     with open(path + ".json", "w") as f:
         f.write(tag)

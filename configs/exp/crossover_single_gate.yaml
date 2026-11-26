@@ -1,0 +1,9 @@
+# Stages 2 + 4: every perception arm across N at the nominal TDMA slot (t_slot = 5 ms -> T_frame = N * 5 ms).
+# Stage 2 reads real / noise_only (C1b: noise_only ~ 0 collisions; C1c: real throughput falls with N).
+# Stage 4 reads the predictor arms (fresh, cv, cvls, smith, learned). Paired diffs only across arms at the same N.
+# Uses base.yaml defaults (fp.nu = 0.5, hold_on_arrival = true); reuses the cached single_gate solves.
+name: crossover_single_gate
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  - {N: [25, 50, 100], arm: [real, noise_only, fresh, cv, cvls, smith, learned]}

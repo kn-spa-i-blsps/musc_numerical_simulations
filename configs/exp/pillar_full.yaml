@@ -1,0 +1,8 @@
+# Stage 7: third geometry, predictor axis. real and noise_only repeat pillar_base (bit-identical check); smith is left
+# out (negative baseline, single_gate only). Known planner property: 3-4 agents per run trapped in front of the pillar /
+# wall in every arm (soft macro wall), reported, not fixed. Solves cached from pillar_base.
+name: pillar_full
+geometry: pillar
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  - {N: [50, 100], arm: [real, learned, noise_only, fresh, cvls]}

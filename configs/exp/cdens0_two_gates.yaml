@@ -1,0 +1,11 @@
+# How much is the online congestion correction worth? Layer split showed that prediction at the routing layer changes
+# little; this switches the correction off entirely (c_dens = 0: agents follow -grad Phi + CBF only). If throughput and
+# safety barely move, the routing layer's use of neighbour estimates is a minor term and the split is not an artefact
+# of a weak correction. Same seeds / layout / t_slot as layer_split_two_gates. c_dens is not in the MFG cache key.
+name: cdens0_two_gates
+geometry: two_gates
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+variants:
+  cdens0: {control.c_dens: 0.0}
+blocks:
+  - {N: [50, 100], arm: [real, learned, noise_only], variant: [cdens0]}

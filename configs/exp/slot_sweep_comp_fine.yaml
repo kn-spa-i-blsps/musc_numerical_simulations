@@ -1,0 +1,8 @@
+# Finer T_frame grid for the compensated threshold (slot_sweep_comp has 250 / 350 / 500 ms only). Single gate,
+# N = 50 / 100, learned and cvls at T_frame {300, 400, 450} ms. Same seeds and GPU model as slot_sweep_comp (paired).
+name: slot_sweep_comp_fine
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  - {N: [50], arm: [learned, cvls], t_slot: [0.006, 0.008, 0.009]}
+  - {N: [100], arm: [learned, cvls], t_slot: [0.003, 0.004, 0.0045]}

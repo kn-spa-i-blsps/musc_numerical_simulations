@@ -30,7 +30,9 @@ def make_rollout(condition, scenario, cfg, *, predictor_params=None, field_param
     prm = CBFParams(**cfg["cbf"])
     dt_exec, n_steps, nu = cfg["dt_exec"], cfg["n_steps"], cfg["nu"]
     cbf_on = cfg["cbf_on"]
-    hold = (goal, scenario.r_goal, prm.d_safe) if cfg.get("hold_on_arrival", False) else None
+    # hold region: r <= hold_radius_frac * r_goal (default 1.0 = the whole disc, the old behaviour)
+    hold = ((goal, cfg.get("hold_radius_frac", 1.0) * scenario.r_goal, prm.d_safe)
+            if cfg.get("hold_on_arrival", False) else None)
     log_xhat = cfg.get("log_xhat", False)
     adaptive = prm.margin_k is not None                                # staleness-aware margin
     closing = adaptive and prm.margin_mode == "closing"                # closure-gated margin

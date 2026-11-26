@@ -1,0 +1,8 @@
+# Stage 3 prerequisite (transfer gate): does the learned predictor beat real on two_gates?
+# Read closedloop_xhat_mse_near learned << real (plain arms; split arms log the CBF-side estimate).
+# Also computes and caches the two_gates solves (N=50, 100) that layer_split_two_gates reuses.
+name: transfer_two_gates
+geometry: two_gates
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  - {N: [50, 100], arm: [real, learned, noise_only]}

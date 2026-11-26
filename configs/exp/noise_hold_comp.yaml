@@ -1,0 +1,12 @@
+# Follow-up to noise_hold_single_gate: with held noise, uncompensated N = 100 collides already at 125 ms (48 %), while
+# held-noise noise_only stays clean. Here: where the held-noise limit lies (real at 75 / 100 ms), and whether the
+# predictors still extend it (cvls, learned at 125-350 ms). The learned / cvls window holds each older broadcast's draw.
+# Same seeds and GPU model as noise_hold_single_gate (paired).
+name: noise_hold_comp
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+variants:
+  held: {noise_hold: true}
+blocks:
+  - {N: [100], arm: [real], variant: [held], t_slot: [0.00075, 0.001]}
+  - {N: [100], arm: [cvls, learned], variant: [held], t_slot: [0.00125, 0.00175, 0.0025, 0.0035]}

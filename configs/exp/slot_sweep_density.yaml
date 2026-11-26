@@ -1,0 +1,12 @@
+# Stage 1b (claim C1a at fixed start density). slot_sweep: the onset T_frame falls with N (ever = 0.05 at 230 / 177 /
+# 155 ms for N = 25 / 50 / 100), first contacts at t = 2-5 s in the start box and gate -- the fixed 96 m^2 start box
+# makes the start spacing shrink as N^-1/2 (2.10 / 1.49 / 1.05 m). Here N = 25, 50 start at the N = 100 spacing
+# (scenario.start_spacing = 1.051 m: box shrunk against the wall, same aspect, centred on the gate). N = 100 is
+# slot_sweep's N100 cells unchanged (start_spacing 1.051 m reproduces its default box). Same T_frame grid, same seeds.
+# Collapse holds at fixed density <=> the three curves of ever(T_frame) coincide.
+name: slot_sweep_density
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  - {N: [25], arm: [real], scenario.start_spacing: [1.051], t_slot: [0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.010, 0.012]}
+  - {N: [50], arm: [real], scenario.start_spacing: [1.051], t_slot: [0.0015, 0.002, 0.0025, 0.003, 0.0035, 0.004, 0.005, 0.006]}

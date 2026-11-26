@@ -1,0 +1,9 @@
+# Operating-point pilot: where does ever_collided leave saturation, and is it staleness (noise_only ~ 0)?
+# Uses the campaign defaults from base.yaml (fp.nu = 0.5, hold_on_arrival = true).
+# T_frame = N * t_slot: 6.25 ms (N=25, 0.25 ms) .. 0.5 s (N=100, 5 ms). noise_only has age 0, so no t_slot sweep.
+name: phase0_pilot
+geometry: single_gate
+seeds: [0, 1]
+blocks:
+  - {N: [25, 50, 100], arm: [real], t_slot: [0.00025, 0.0005, 0.001, 0.002, 0.005]}
+  - {N: [25, 50, 100], arm: [noise_only]}

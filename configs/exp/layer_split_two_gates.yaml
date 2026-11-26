@@ -1,0 +1,11 @@
+# Stage 3 (claim C2): which layer needs the prediction? split:<mfg arm>/<cbf arm> feeds one estimate to the MFG
+# density-tracking layer and another to the CBF. Transfer gate passed (transfer_two_gates, N=100:
+# closedloop_xhat_mse_near learned 0.022 vs real 0.28). Expected pattern: split:real/learned safe + low throughput,
+# split:learned/real unsafe + high throughput, learned safe + high. split:cvls/* tests architecture vs ML.
+# Default t_slot (T_frame 250 / 500 ms), same solves as transfer_two_gates. Throughput: arrival p50 / t90.
+name: layer_split_two_gates
+geometry: two_gates
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  - {N: [50, 100], arm: [real, learned, noise_only, fresh, cvls,
+                         "split:real/learned", "split:learned/real", "split:real/cvls", "split:cvls/real"]}

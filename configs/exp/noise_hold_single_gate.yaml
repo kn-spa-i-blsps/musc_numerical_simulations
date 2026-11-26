@@ -1,0 +1,14 @@
+# Reviewer check of the staleness attribution: the simulator redraws the measurement noise every 10 ms step, a real
+# receiver holds one sample per frame. Here the noise of each broadcast is held until the sender's next broadcast
+# (noise_hold, see compensation/perception.py). N = 100, single gate, T_frame {125, 250, 500} ms. Paired: real and
+# noise_only share the held draws. Per-step noise_only at the same frames is the matched control on this GPU
+# (real per-step at these frames: slot_sweep_comp).
+name: noise_hold_single_gate
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+variants:
+  held: {noise_hold: true}
+  perstep: {noise_hold: false}
+blocks:
+  - {N: [100], arm: [real, noise_only], variant: [held], t_slot: [0.00125, 0.0025, 0.005]}
+  - {N: [100], arm: [noise_only], variant: [perstep], t_slot: [0.00125, 0.0025, 0.005]}

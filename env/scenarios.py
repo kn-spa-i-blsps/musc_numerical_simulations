@@ -184,15 +184,45 @@ class SingleGateA:
                * 0.25 * (1 + jnp.tanh((z - z0) / s)) * (1 + jnp.tanh((z1 - z) / s)))
         return ind * (self.N / (jnp.sum(ind) * grid.step ** 2))
 
-    def initial_positions(self, key: jax.Array, density: jnp.ndarray) -> jnp.ndarray:
-        """N agents drawn from `density` (the MFG plan at t = 0, i.e. m0 on the solve grid).
+    def initial_positions(self, key: jax.Array, density: jnp.ndarray | None = None) -> jnp.ndarray:
+        """With `density` (m*(·, 0)): N agents quantized onto that plan.
 
-        A uniform lattice in the start box over-fills the tapered boundary of m0, so the online
-        correction (realized density minus the plan) is systematic at the first step and the
-        swarm spreads into collisions. Sampling the plan makes that correction the small residual
-        it is supposed to be. Pairs start at least D_COLLISION apart. Explicit PRNG key.
+        Without it: the jittered hex lattice filling the start box. `start_spacing` only changes
+        the box, so this lattice keeps spacing s. The rollout passes m*(·, 0) and does not use
+        the lattice.
         """
+        if density is None:
+            return self._hex_initial_positions(key)
         return positions_matching_density(key, density, self.domain(), self.N)
+
+    def _hex_initial_positions(self, key: jax.Array) -> jnp.ndarray:
+        """N agents on a jittered hexagonal lattice filling the start box (min spacing well above
+        D_COLLISION, so the CBF safe set holds at t=0). Explicit PRNG key."""
+        x0, x1, z0, z1 = self.start_box
+        area = (x1 - x0) * (z1 - z0)
+        a = math.sqrt(2.0 * area / (math.sqrt(3.0) * self.N))  # hex spacing filling the box
+        if self.N == 1:
+            return jnp.array([[(x0 + x1) / 2, (z0 + z1) / 2]])
+        while True:
+            pts = []
+            row = 0
+            z = z0 + a / 2
+            while z <= z1 - a / 4:
+                off = (a / 2) * (row % 2)
+                x = x0 + a / 2 + off
+                while x <= x1 - a / 4:
+                    pts.append((x, z))
+                    x += a
+                z += a * math.sqrt(3.0) / 2
+                row += 1
+            if len(pts) >= self.N:
+                break
+            a *= 0.98
+        pts = jnp.asarray(np.array(pts))
+        k1, k2 = jax.random.split(key)
+        idx = jax.random.permutation(k1, pts.shape[0])[: self.N]
+        jitter = jax.random.uniform(k2, (self.N, 2), minval=-0.1 * a, maxval=0.1 * a)
+        return pts[idx] + jitter
 
     def goal_capacity_area(self, step: float = 0.02) -> float:
         """Area of the goal disc that is inside the arena and on the goal side of the wall."""

@@ -1,0 +1,23 @@
+# Full-flight density control for claim C1a residual N-effect.
+# slot_sweep / slot_sweep_density / slot_sweep_gate_sqrtN keep scenario.geometry_N = 230 (shared
+# arena). Matched start spacing and/or gate ∝ √N then still leave transit denser at larger N.
+#
+# Intervention: self-similar geometry -- scenario.geometry_N = N and
+# scenario.gate_width = GATE_RATIO * W(N) = gate_width_for_N(N) (RHO_NOM = 1, GATE_RATIO = 0.20).
+# Start-box area then scales with N, so hex start spacing stays ~constant without start_spacing.
+# goal_spacing / goal_geometry_spacing stay 1.05 from single_gate (r_goal ∝ √N). Same T_frame grid
+# and seeds as slot_sweep. Real arm only.
+#
+# Read: ever_collided vs T_frame for N = 25 / 50 / 100 inside this experiment.
+#   - curves coincide on unsaturated columns => residual N-onset shift was whole-arena packing
+#   - onset still falls with N                 => not explained by global density (metric / TDMA / ...)
+# Absolute levels are NOT paired with slot_sweep (different arena than geometry_N = 230); judge
+# collapse across N here, then compare the onset shape to the fixed-arena sweeps.
+name: slot_sweep_geom_scaleN
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  # T_frame = {75, 100, 125, 150, 175, 200, 250, 300} ms
+  - {N: [25], arm: [real], scenario.geometry_N: [25], scenario.gate_width: [1.1547005383792515], t_slot: [0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.010, 0.012]}
+  - {N: [50], arm: [real], scenario.geometry_N: [50], scenario.gate_width: [1.6329931618554523], t_slot: [0.0015, 0.002, 0.0025, 0.003, 0.0035, 0.004, 0.005, 0.006]}
+  - {N: [100], arm: [real], scenario.geometry_N: [100], scenario.gate_width: [2.309401076758503], t_slot: [0.00075, 0.001, 0.00125, 0.0015, 0.00175, 0.002, 0.0025, 0.003]}

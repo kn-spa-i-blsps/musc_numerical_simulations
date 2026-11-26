@@ -1,13 +1,14 @@
-"""Config-level checks for the gate ∝ sqrt(N) collapse controls.
+"""Config-level checks for the packing-collapse controls (gate √N, start density, geom ∝ N).
 
-These do not run rollouts. They lock the experimental design: shared T_frame grid,
-gate_width = G0 * sqrt(N / 25), and (for the density file) matched start spacing.
+These do not run rollouts. They lock the experimental design: shared T_frame grid and the
+intended geometry overrides.
 """
 from __future__ import annotations
 
 import math
 import os
 
+from control.params import gate_width_for_N
 from sim.config import load_experiment
 from sim.setup import ROOT
 
@@ -74,3 +75,30 @@ def test_built_scenario_receives_scaled_gate():
         cfg = next(c["cfg"] for c in cells.values() if c["cfg"]["N"] == N)
         sc = build_scenario(cfg, N)
         assert abs(sc.gate_width - _gate(N)) < 1e-9
+
+
+def test_geom_scaleN_self_similar_arena_and_gate():
+    """geometry_N = N and gate = gate_width_for_N(N); start spacing ~constant across N."""
+    exp, cells = _cells("slot_sweep_geom_scaleN.yaml")
+    assert exp["name"] == "slot_sweep_geom_scaleN"
+    assert len(cells) == 24
+    from sim.setup import build_scenario
+    spacings = {}
+    arenas = {}
+    for N, group in _by_N(cells).items():
+        frames = sorted(round(1000 * N * c["cfg"]["t_slot"]) for c in group)
+        assert frames == list(T_FRAME_MS)
+        cfg = group[0]["cfg"]
+        assert cfg["scenario"]["geometry_N"] == N
+        assert abs(cfg["scenario"]["gate_width"] - gate_width_for_N(N)) < 1e-9
+        assert cfg["scenario"].get("start_spacing") is None
+        sc = build_scenario(cfg, N)
+        assert sc.N_geom == N and sc.N == N
+        assert abs(sc.gate_width - gate_width_for_N(N)) < 1e-9
+        x0, x1, z0, z1 = sc.start_box
+        area = (x1 - x0) * (z1 - z0)
+        spacings[N] = math.sqrt(area / (N * (math.sqrt(3.0) / 2.0)))
+        arenas[N] = sc.arena[0] * sc.arena[1]
+    # Self-similar: start hex spacing nearly flat; arena area grows ~linearly with N
+    assert max(spacings.values()) / min(spacings.values()) < 1.05
+    assert arenas[100] / arenas[25] > 3.0  # order-of-N growth (goal chamber included)

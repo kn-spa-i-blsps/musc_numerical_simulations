@@ -1,0 +1,18 @@
+# Stronger C1a control: gate_width ∝ sqrt(N) AND matched start spacing (as slot_sweep_density).
+# Removes the two packing confounds that shift onset with N at fixed T_frame:
+#   1) fixed start box -> spacing ∝ N^{-1/2} (slot_sweep: onset 230 / 177 / 155 ms)
+#   2) fixed gate width -> larger N packs harder in the opening
+#
+# gate_width = G0 * sqrt(N / 25) with G0 = 2.309401076758503 (N = 25 = original single_gate gate).
+# start_spacing = 1.051 m for every N (N = 100 default box). Same T_frame grid / seeds as slot_sweep.
+#
+# Decision rule (same as slot_sweep_density): collapse holds <=> the three ever(T_frame) curves coincide
+# on unsaturated T_frame columns. If they do, safety after the AoI threshold is not an intrinsic N
+# effect once local packing is controlled.
+name: slot_sweep_gate_sqrtN_density
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  - {N: [25], arm: [real], scenario.start_spacing: [1.051], scenario.gate_width: [2.309401076758503], t_slot: [0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.010, 0.012]}
+  - {N: [50], arm: [real], scenario.start_spacing: [1.051], scenario.gate_width: [3.265986323710904], t_slot: [0.0015, 0.002, 0.0025, 0.003, 0.0035, 0.004, 0.005, 0.006]}
+  - {N: [100], arm: [real], scenario.start_spacing: [1.051], scenario.gate_width: [4.618802153517006], t_slot: [0.00075, 0.001, 0.00125, 0.0015, 0.00175, 0.002, 0.0025, 0.003]}

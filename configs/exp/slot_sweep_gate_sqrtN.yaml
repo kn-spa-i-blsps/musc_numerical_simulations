@@ -1,0 +1,21 @@
+# Gate-capacity control for claim C1a residual N-effect.
+# Hypothesis: with a FIXED gate, larger N reaches the ever_collided onset at a slightly smaller
+# T_frame because the same opening is a tighter bottleneck (delay x packing), not because AoI
+# depends on N beyond T_frame = N * t_slot.
+#
+# Intervention: scenario.gate_width = G0 * sqrt(N / N_ref), N_ref = 25, G0 = single_gate default
+# (2.309401076758503 m). N = 25 keeps the original gate (paired with slot_sweep N25); N = 50 / 100
+# get wider gates. Same T_frame grid and seeds as slot_sweep. Real arm only.
+#
+# Read: plot ever_collided vs T_frame for N = 25 / 50 / 100.
+#   - curves collapse toward slot_sweep's N25  => residual N-onset shift was gate capacity
+#   - onset still falls with N                 => something else (start density, metric, ...)
+# Compare against results/slot_sweep. New gate widths enter the MFG cache key (fresh solves).
+name: slot_sweep_gate_sqrtN
+geometry: single_gate
+seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+blocks:
+  # T_frame = {75, 100, 125, 150, 175, 200, 250, 300} ms
+  - {N: [25], arm: [real], scenario.gate_width: [2.309401076758503], t_slot: [0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.010, 0.012]}
+  - {N: [50], arm: [real], scenario.gate_width: [3.265986323710904], t_slot: [0.0015, 0.002, 0.0025, 0.003, 0.0035, 0.004, 0.005, 0.006]}
+  - {N: [100], arm: [real], scenario.gate_width: [4.618802153517006], t_slot: [0.00075, 0.001, 0.00125, 0.0015, 0.00175, 0.002, 0.0025, 0.003]}

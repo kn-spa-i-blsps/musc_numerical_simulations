@@ -1,14 +1,19 @@
-"""Macro layer: nominal control from the offline MFG solution plus a local density
-term driven by the (possibly delay-compensated) neighbour estimate x_hat.
+"""Macro layer: nominal control is the offline MFG plan plus a small online correction.
 
-    u_nom_i = -grad Phi(t, x_i)                                              [routing, oracle field]
-              - C_DENS * grad_{x_i} [ c_w * relu(m_hat_i - m*(t,x_i))^2      [congestion in EXCESS of
-                                      + w_bar * relu(m_hat_i - m_bar)^2 ]     the equilibrium; soft barrier]
+    u_nom_i = -grad Phi(t, x_i)                                              [MFG plan]
+              - C_DENS * grad_{x_i} [ c_w * relu(m_hat_i - m*(t,x_i))^2      [online correction:
+                                      + w_bar * relu(m_hat_i - m_bar)^2 ]     realized state vs the plan,
+                                                                               plus the soft barrier]
 
-Density is emergent: there is no attraction towards m* (the excess term is one-sided, zero whenever
-the realized local density is at or below the equilibrium's). The local goal observation
-(range, bearing) is computed from the agent's own position, independently of Phi;
-the CBF uses it for goal-biased priority.
+The plan-deviation piece is one-sided in (m_hat - m*): it is the difference between the realized
+local density and the original equilibrium, and it is zero whenever the realization is at or below
+the plan (no attraction toward m*). With agents initialized on m*(·, 0) this difference starts
+small, because agent-wise deviations average out. What is left is relatively larger at small N
+and on the boundary of the support, where that average is thin. The term is not the collision
+filter — the CBF takes the neighbour estimates x_hat and handles separation.
+
+The local goal observation (range, bearing) is computed from the agent's own position, independently
+of Phi; the CBF uses it for goal-biased priority.
 
 Hold-on-arrival (optional): an agent inside r_goal whose nearest ESTIMATED neighbour is at
 least d_hold away gets u_nom = 0; otherwise u_nom is unchanged (the density term can still separate).

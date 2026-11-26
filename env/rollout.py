@@ -141,10 +141,8 @@ def make_rollout(condition, scenario, cfg, *, predictor_params=None, field_param
             y["held"] = mdiag["held"]
         return (positions_new, history, key, warm), y
 
-    def run_arrays(key, arrays, dt, step):
+    def run_arrays(key, arrays, pos0, dt, step):
         macro = dict(arrays, dt=dt, step=step)
-        key, k0 = jax.random.split(key)
-        pos0 = scenario.initial_positions(k0)
         n_walls = segs.shape[0]
         carry0 = (pos0, jnp.zeros((n_steps, N, 2)), key, init_warm_start(N, prm, n_walls))
         (pos_T, _, _, _), logs = jax.lax.scan(lambda c, k: step_fn(c, k, macro), carry0,
@@ -157,7 +155,11 @@ def make_rollout(condition, scenario, cfg, *, predictor_params=None, field_param
 
     def run(key, macro):
         arrays = {k: macro[k] for k in ("phi_grad", "m_star", "m_star_grad")}
-        return jitted(key, arrays, dt=float(macro["dt"]), step=float(macro["step"]))
+        # m_star[0] is m0 for every fictitious-play iterate, i.e. the plan's initial condition.
+        # Drawn outside the rollout jit so the sampler stays out of that graph.
+        key, k0 = jax.random.split(key)
+        pos0 = scenario.initial_positions(k0, macro["m_star"][0])
+        return jitted(key, arrays, pos0, dt=float(macro["dt"]), step=float(macro["step"]))
 
     return run
 

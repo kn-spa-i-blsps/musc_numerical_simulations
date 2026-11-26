@@ -1,6 +1,7 @@
 """Scenarios. A scenario owns the ONE arena used by both the offline MFG solve and the
-rollout): soft macro potentials (V_goal, V_obs), the initial density m0 and matching
-initial agent positions, the goal (point + r_goal), and the hard wall geometry used by the CBF.
+rollout: soft macro potentials (V_goal, V_obs), the initial density m0 and matching
+initial agent positions (a separated sample of m0 / m*(·, 0), not a uniform fill),
+the goal (point + r_goal), and the hard wall geometry used by the CBF.
 """
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ import numpy as np
 
 from control.params import arena_for_N, gate_width_for_N, r_goal_for_N, D_STAR
 from env.base import Grid
+from env.initial import positions_matching_density
 
 WALL_HALF_THICKNESS = 0.05  # m, physical (hard) wall half-thickness seen by the CBF
 
@@ -160,34 +162,15 @@ class SingleGateA:
                * 0.25 * (1 + jnp.tanh((z - z0) / s)) * (1 + jnp.tanh((z1 - z) / s)))
         return ind * (self.N / (jnp.sum(ind) * grid.step ** 2))
 
-    def initial_positions(self, key: jax.Array) -> jnp.ndarray:
-        """N agents on a jittered hexagonal lattice filling the start box (min spacing well above
-        D_COLLISION, so the CBF safe set holds at t=0). Explicit PRNG key."""
-        x0, x1, z0, z1 = self.start_box
-        area = (x1 - x0) * (z1 - z0)
-        a = math.sqrt(2.0 * area / (math.sqrt(3.0) * self.N))  # hex spacing filling the box
-        if self.N == 1:
-            return jnp.array([[(x0 + x1) / 2, (z0 + z1) / 2]])
-        while True:
-            pts = []
-            row = 0
-            z = z0 + a / 2
-            while z <= z1 - a / 4:
-                off = (a / 2) * (row % 2)
-                x = x0 + a / 2 + off
-                while x <= x1 - a / 4:
-                    pts.append((x, z))
-                    x += a
-                z += a * math.sqrt(3.0) / 2
-                row += 1
-            if len(pts) >= self.N:
-                break
-            a *= 0.98
-        pts = jnp.asarray(np.array(pts))
-        k1, k2 = jax.random.split(key)
-        idx = jax.random.permutation(k1, pts.shape[0])[: self.N]
-        jitter = jax.random.uniform(k2, (self.N, 2), minval=-0.1 * a, maxval=0.1 * a)
-        return pts[idx] + jitter
+    def initial_positions(self, key: jax.Array, density: jnp.ndarray) -> jnp.ndarray:
+        """N agents drawn from `density` (the MFG plan at t = 0, i.e. m0 on the solve grid).
+
+        A uniform lattice in the start box over-fills the tapered boundary of m0, so the online
+        correction (realized density minus the plan) is systematic at the first step and the
+        swarm spreads into collisions. Sampling the plan makes that correction the small residual
+        it is supposed to be. Pairs start at least D_COLLISION apart. Explicit PRNG key.
+        """
+        return positions_matching_density(key, density, self.domain(), self.N)
 
     def goal_capacity_area(self, step: float = 0.02) -> float:
         """Area of the goal disc that is inside the arena and on the goal side of the wall."""
